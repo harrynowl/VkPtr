@@ -220,6 +220,11 @@ private:
   struct Internal : public std::enable_shared_from_this<Internal>
   {
     /**
+     * Allow default uninitialised construction
+     */
+    Internal() = default;
+
+    /**
      * Create a fully initialised internal object
      *
      * \param handle    Handle to delete (may be null)
