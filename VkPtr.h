@@ -214,7 +214,14 @@ public:
    *
    * \return Pointer to handle, VK_NULL_HANDLE if object is not set
    */
-  VulkanObject* operator&() const;
+  VulkanObject* pointer() const;
+
+  /**
+   * Release control of the handle
+   *
+   * @return Handle, no longer managed by this object
+   */
+  VulkanObject release();
 
 private:
   struct Internal : public std::enable_shared_from_this<Internal>
@@ -410,9 +417,20 @@ T VkPtr<T>::operator*() const
 //////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-T* VkPtr<T>::operator&() const
+T* VkPtr<T>::pointer() const
 {
   return &internal->handle;
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+T VkPtr<T>::release()
+{
+  T handle = internal->handle;
+  internal->handle = VK_NULL_HANDLE;
+  return handle;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
