@@ -64,7 +64,8 @@ using PoolObjectDeleter = std::function<void(VkDevice, Pool, uint32_t, const Dev
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
 
-using AnonymousDeleter = std::function<void()>;
+template<typename Object>
+using AnonymousDeleter = std::function<void(Object)>;
 
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +225,7 @@ public:
   VulkanObject release();
 
 private:
-  struct Internal : public std::enable_shared_from_this<Internal>
+  struct Internal
   {
     /**
      * Allow default uninitialised construction
@@ -240,7 +241,7 @@ private:
      * \param handle    Handle to delete (may be null)
      * \param deleter   Anonymous deleter for handle
      */
-    Internal(VulkanObject handle, AnonymousDeleter deleter)
+    Internal(VulkanObject handle, AnonymousDeleter<T> deleter)
       : handle(handle)
       , deleter(std::move(deleter))
     {}
@@ -251,14 +252,14 @@ private:
     ~Internal()
     {
       // Invoke if handle and deleter both valid
-      if (deleter && handle) deleter();
+      if (deleter && handle) deleter(handle);
     }
 
     //! Vulkan object
     VulkanObject handle;
 
     //! Delete function
-    AnonymousDeleter deleter;
+    AnonymousDeleter<T> deleter;
   };
 
   //! Use shared_ptr semantics to manage object lifetime
@@ -270,7 +271,7 @@ private:
 
 template<typename T>
 VkPtr<T>::VkPtr()
-  : internal(std::make_shared<Internal>())
+  : internal()
 {}
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +279,7 @@ VkPtr<T>::VkPtr()
 
 template<typename T>
 VkPtr<T>::VkPtr(std::nullptr_t)
-  : internal(std::make_shared<Internal>())
+  : internal()
 {}
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -300,9 +301,9 @@ VkPtr<T>::VkPtr(T object,
                 ObjectDeleter<T> deleter,
                 const VkAllocationCallbacks* callbacks)
   : internal(std::make_shared<Internal>(object,
-                                        [this, deleter, callbacks]
+                                        [=](VulkanObject handle)
                                         {
-                                          deleter(this->internal->handle, callbacks);
+                                          deleter(handle, callbacks);
                                         }))
 {}
 
@@ -328,9 +329,9 @@ VkPtr<T>::VkPtr(VkPtr<VkInstance> instance,
                 InstanceObjectDeleter<T> deleter,
                 const VkAllocationCallbacks* callbacks)
   : internal(std::make_shared<Internal>(object,
-                                        [this, instance, deleter, callbacks]
+                                        [=](VulkanObject handle)
                                         {
-                                          deleter(*instance, this->internal->handle, callbacks);
+                                          deleter(*instance, handle, callbacks);
                                         }))
 {}
 
@@ -356,9 +357,9 @@ VkPtr<T>::VkPtr(VkPtr<VkDevice> device,
                 DeviceObjectDeleter<T> deleter,
                 const VkAllocationCallbacks* callbacks)
   : internal(std::make_shared<Internal>(object,
-                                        [this, device, deleter, callbacks]
+                                        [=](VulkanObject handle)
                                         {
-                                          deleter(*device, this->internal->handle, callbacks);
+                                          deleter(*device, handle, callbacks);
                                         }))
 {}
 
@@ -386,9 +387,9 @@ VkPtr<T>::VkPtr(VkPtr<VkDevice> device,
                 T object,
                 PoolObjectDeleter<typename Pool::VulkanObject, T> deleter)
   : internal(std::make_shared<Internal>(object,
-                                        [this, device, pool, deleter]
+                                        [=](VulkanObject handle)
                                         {
-                                          deleter(*device, *pool, 1, &this->internal->handle);
+                                          deleter(*device, *pool, 1, &handle);
                                         }))
 {}
 
@@ -404,7 +405,7 @@ VkPtr<T>::~VkPtr() = default;
 template<typename T>
 T VkPtr<T>::get() const
 {
-  return internal->handle;
+  return internal ? internal->handle : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +414,7 @@ T VkPtr<T>::get() const
 template<typename T>
 T VkPtr<T>::operator*() const
 {
-  return internal->handle;
+  return internal ? internal->handle : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +423,7 @@ T VkPtr<T>::operator*() const
 template<typename T>
 T* VkPtr<T>::pointer() const
 {
-  return &internal->handle;
+  return internal ? &internal->handle : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -431,9 +432,12 @@ T* VkPtr<T>::pointer() const
 template<typename T>
 T VkPtr<T>::release()
 {
-  T handle = internal->handle;
-  internal->handle = VK_NULL_HANDLE;
-  return handle;
+  if (internal)
+  {
+    T handle = internal->handle;
+    internal->handle = VK_NULL_HANDLE;
+    return handle;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////
