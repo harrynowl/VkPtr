@@ -229,7 +229,10 @@ private:
     /**
      * Allow default uninitialised construction
      */
-    Internal() = default;
+    Internal()
+      : handle(VK_NULL_HANDLE)
+      , deleter()
+    {}
 
     /**
      * Create a fully initialised internal object
@@ -252,7 +255,7 @@ private:
     }
 
     //! Vulkan object
-    VulkanObject handle = VK_NULL_HANDLE;
+    VulkanObject handle;
 
     //! Delete function
     AnonymousDeleter deleter;
