@@ -192,9 +192,41 @@ public:
         PoolObjectDeleter<typename Pool::VulkanObject, VulkanObject> deleter);
 
   /**
+   * Copy constructor
+   *
+   * \param other Source of copy
+   */
+  VkPtr(const VkPtr<T>& other);
+
+  /**
+   * Move constructor
+   *
+   * \param other Source of move
+   */
+  VkPtr(VkPtr<T>&& other) noexcept;
+
+  /**
    * Destructor
    */
   ~VkPtr();
+
+  /**
+   * Copy assignment operator
+   *
+   * \param other Source of assignment
+   *
+   * \return Assigned value
+   */
+  VkPtr& operator=(const VkPtr<T>& other);
+
+  /**
+   * Move assignment operator
+   *
+   * \param other Source of move
+   *
+   * \return Assigned value
+   */
+  VkPtr& operator=(VkPtr<T>&& other) noexcept;
 
   /**
    * Get handle
@@ -397,7 +429,43 @@ VkPtr<T>::VkPtr(VkPtr<VkDevice> device,
 //////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
+VkPtr<T>::VkPtr(const VkPtr<T>& other)
+  : internal(other.internal)
+{}
+
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+VkPtr<T>::VkPtr(VkPtr<T>&& other) noexcept
+  : internal(std::move(other.internal))
+{}
+
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
 VkPtr<T>::~VkPtr() = default;
+
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+VkPtr<T>& VkPtr<T>::operator=(const VkPtr<T>& other)
+{
+  internal = other.internal;
+  return *this;
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+VkPtr<T>& VkPtr<T>::operator=(VkPtr<T>&& other) noexcept
+{
+  internal = std::move(other.internal);
+  return *this;
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////
